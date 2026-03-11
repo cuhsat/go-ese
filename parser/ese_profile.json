@@ -119,11 +119,6 @@
         "InitialNumberOfPages": [12, ["unsigned long"]]
     }],
 
-    "CATALOG_TYPE_TABLE": [0, {
-        "FatherDataPageNumber": [0, ["unsigned long"]],
-        "SpaceUsage": [4, ["unsigned long"]]
-    }],
-
     "CATALOG_TYPE_COLUMN": [0, {
         "ColumnType": [0, ["Enumeration", {
             "target": "unsigned long",

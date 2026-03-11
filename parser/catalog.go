@@ -794,7 +794,7 @@ func (self *Catalog) __addItem(_ *PageHeader, _ int64, value *Value) error {
 						size = 100
 					}
 					buffer := make([]byte, size)
-					value.Reader().ReadAt(buffer, 0)
+					_, _ = value.Reader().ReadAt(buffer, 0)
 
 					lv_buffer := long_value.Buffer()
 					if len(lv_buffer) > 100 {
