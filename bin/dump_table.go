@@ -7,8 +7,8 @@ import (
 	"os"
 
 	"github.com/Velocidex/ordereddict"
-	kingpin "gopkg.in/alecthomas/kingpin.v2"
-	"www.velocidex.com/golang/go-ese/parser"
+	"github.com/alecthomas/kingpin/v2"
+	"github.com/cuhsat/go-ese/parser"
 )
 
 var (

@@ -3,8 +3,8 @@ package main
 import (
 	"os"
 
-	kingpin "gopkg.in/alecthomas/kingpin.v2"
-	"www.velocidex.com/golang/go-ese/parser"
+	"github.com/alecthomas/kingpin/v2"
+	"github.com/cuhsat/go-ese/parser"
 )
 
 type CommandHandler func(command string) bool

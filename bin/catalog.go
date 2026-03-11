@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	kingpin "gopkg.in/alecthomas/kingpin.v2"
-	"www.velocidex.com/golang/go-ese/parser"
+	"github.com/alecthomas/kingpin/v2"
+	"github.com/cuhsat/go-ese/parser"
 )
 
 var (
@@ -25,7 +25,7 @@ func doCatalog() {
 
 	catalog, err := parser.ReadCatalog(ese_ctx)
 	kingpin.FatalIfError(err, "Unable to open ese file")
-	fmt.Printf(catalog.Dump(parser.DumpOptions{
+	fmt.Print(catalog.Dump(parser.DumpOptions{
 		Indexes:         true,
 		Tables:          true,
 		LongValueTables: *catalog_command_long_value,
