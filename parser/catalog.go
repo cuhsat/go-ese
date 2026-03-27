@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/Velocidex/ordereddict"
-	"github.com/davecgh/go-spew/spew"
 )
 
 const (
@@ -84,15 +83,7 @@ type Table struct {
 // Then the tagged values are consumed
 // Column RDomain Identifier 256 Type Long Text
 
-func (self *Table) tagToRecord(value *Value, header *PageHeader) *ordereddict.Dict {
-	if Debug {
-		fmt.Printf("Processing row in Tag @ %d %#x (%#x)",
-			value.Tag.Offset,
-			value.Tag.ValueOffsetInPage(self.ctx, header),
-			value.Tag.ValueSize(self.ctx))
-		spew.Dump(value.GetBuffer())
-	}
-
+func (self *Table) tagToRecord(value *Value, _ *PageHeader) *ordereddict.Dict {
 	result := ordereddict.NewDict()
 
 	var taggedItems map[uint32]TaggedValue
@@ -105,10 +96,6 @@ func (self *Table) tagToRecord(value *Value, header *PageHeader) *ordereddict.Di
 	// Start to parse immediately after the dd_header
 	offset := dd_header.Offset + int64(dd_header.Size())
 
-	if Debug {
-		fmt.Println(dd_header.DebugString())
-	}
-
 	prevItemLen := int64(0)
 	variableSizeOffset := dd_header.Offset + int64(dd_header.VariableSizeOffset())
 	variableDataBytesProcessed := int64(dd_header.LastVariableDataType()-127) * 2
@@ -118,11 +105,6 @@ func (self *Table) tagToRecord(value *Value, header *PageHeader) *ordereddict.Di
 	// Iterate over the column definitions and decode each
 	// identifier according to where it comes from.
 	for _, column := range self.Columns {
-		if Debug {
-			fmt.Printf("Column %v Identifier %v Type %v\n", column.Name,
-				column.Identifier, column.Type)
-		}
-
 		// Column is stored in the fixed section.
 		if column.Identifier <= last_fixed_type {
 			switch column.Type {
@@ -252,11 +234,6 @@ func (self *Table) tagToRecord(value *Value, header *PageHeader) *ordereddict.Di
 					column.Name, column)
 			}
 
-			if Debug {
-				fmt.Printf("Consumed %#x bytes of FIXED space from %#x\n",
-					column.SpaceUsage, offset)
-			}
-
 			// Move our offset along
 			offset += column.SpaceUsage
 
@@ -292,24 +269,12 @@ func (self *Table) tagToRecord(value *Value, header *PageHeader) *ordereddict.Di
 				}
 			}
 
-			if Debug {
-				fmt.Printf("Consumed %#x bytes of VARIABLE space from %#x\n",
-					itemLen-prevItemLen, variableDataBytesProcessed)
-			}
-
 			variableDataBytesProcessed += itemLen - prevItemLen
 			prevItemLen = itemLen
 
 			// Tagged values
 		} else if column.Identifier > 255 {
 			if taggedItems == nil {
-				if Debug {
-					fmt.Printf("Slice is %#x-%#x %x\n",
-						variableDataBytesProcessed+variableSizeOffset,
-						value.BufferSize,
-						getValueSlice(value, uint64(variableDataBytesProcessed+
-							variableSizeOffset), uint64(value.BufferSize)))
-				}
 				taggedItems = ParseTaggedValues(
 					self.ctx, getValueSlice(value,
 						uint64(variableDataBytesProcessed+variableSizeOffset),
@@ -434,12 +399,6 @@ func (self *Table) tagToRecord(value *Value, header *PageHeader) *ordereddict.Di
 							return self.Header.Profile.GUID(bytes2.NewReader(bytes), 0).AsString()
 						}))
 					}
-
-				default:
-					if Debug {
-						fmt.Printf("Can not handle Column %v tagged data %v\n",
-							column.Name, column)
-					}
 				}
 			}
 		}
@@ -521,9 +480,6 @@ func (self *Table) ParseMultiValue(buffer []byte, parseFn func([]byte) any, fLon
 		}
 		data := buffer[ib1:ib2]
 		fSeparatedInstance := (mv1 & 0x8000) != 0
-		if Debug && fCompressed && imv == 0 && fSeparatedInstance {
-			fmt.Printf("long value compressed AND separated, something has gone wrong\n")
-		}
 		var newData any
 		if fLongValue {
 			if fCompressed && imv == 0 {
@@ -584,9 +540,9 @@ func (self *Table) ParseTaggedValueWithPrimitiveDecoder(_ *ESEContext, value Tag
 			}
 			if newData != nil {
 				return parseFn(newData)
-			} else {
-				return nil
 			}
+
+			return nil
 		}
 		return nil
 	default: // optionally compressed intrinsic long value, or value without special flags
@@ -596,9 +552,9 @@ func (self *Table) ParseTaggedValueWithPrimitiveDecoder(_ *ESEContext, value Tag
 		}
 		if data != nil {
 			return parseFn(data)
-		} else {
-			return nil
 		}
+
+		return nil
 	}
 }
 
@@ -615,11 +571,6 @@ func ParseTaggedValues(ctx *ESEContext, buffer []byte) map[uint32]TaggedValue {
 	// Tags go from 0 to the start of the first tag's data
 	for offset := int64(0); offset < int64(ctx.GetTaggedValueOffset(first_record.TagData())); offset += 4 {
 		record_tag := ctx.Profile.RecordTag(reader, offset)
-		if Debug {
-			fmt.Printf("RecordTag %v\n", record_tag.DebugString())
-			fmt.Printf("Tag flags are %x\n", ctx.GetTaggedValueFlags(record_tag.TagData()))
-			fmt.Printf("Tag offset is %x\n", ctx.GetTaggedValueOffset(record_tag.TagData()))
-		}
 		tags = append(tags, tagBuffer{
 			identifier: uint32(record_tag.Identifier()),
 			start:      uint64(ctx.GetTaggedValueOffset(record_tag.TagData())),
@@ -661,10 +612,6 @@ func ParseTaggedValues(ctx *ESEContext, buffer []byte) map[uint32]TaggedValue {
 		result[tag.identifier] = TaggedValue{
 			bHeader: headerByte,
 			data:    buffer[start:end],
-		}
-		if Debug {
-			fmt.Printf("Consumed %#x bytes of TAGGED space from %#x to %#x for tag %#x\n",
-				end-start, start, end, tag.identifier)
 		}
 	}
 	return result
@@ -771,9 +718,6 @@ func (self *Catalog) __addItem(_ *PageHeader, _ int64, value *Value) error {
 		self.currentTable.Indexes.Set(itemName, catalog)
 
 	case "CATALOG_TYPE_LONG_VALUE":
-		if Debug {
-			fmt.Printf("Catalog name %v for table %v\n", itemName, self.currentTable.Name)
-		}
 		lv := catalog.LongValue()
 
 		_ = WalkPages(self.ctx, int64(lv.FatherDataPageNumber()),
@@ -794,28 +738,6 @@ func (self *Catalog) __addItem(_ *PageHeader, _ int64, value *Value) error {
 
 				self.currentTable.LongValueLookup[key.Key()] = long_value
 
-				if Debug {
-					size := int(value.Tag._ValueSize())
-					if size > 100 {
-						size = 100
-					}
-					buffer := make([]byte, size)
-					_, _ = value.Reader().ReadAt(buffer, 0)
-
-					lv_buffer := long_value.Buffer()
-					if len(lv_buffer) > 100 {
-						lv_buffer = lv_buffer[:100]
-					}
-
-					fmt.Printf("------\nPage header %v\nID %v Tag %v\nPageID %v Flags %v\nKey %v \nLVBuffer %02x\nBuffer %02x \nTagLookup %v\n",
-						DebugPageHeader(self.ctx, header), id,
-						DebugTag(self.ctx, value.Tag, header),
-						value.PageID,
-						value.Flags,
-						long_value.Key.DebugString(),
-						lv_buffer, buffer,
-						len(self.currentTable.LongValueLookup))
-				}
 				return nil
 			})
 	}

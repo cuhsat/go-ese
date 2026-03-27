@@ -74,12 +74,9 @@ func ParseLongText(buf []byte, cp uint32) string {
 	} else if cp == 1200 {
 		new_buf := UTF16BytesToUTF8(buf, binary.LittleEndian)
 		return strings.Split(new_buf, "\x00")[0]
-	} else {
-		if Debug {
-			fmt.Printf("Unexpected code page: %d for value %x\n", cp, buf)
-		}
-		return ""
 	}
+
+	return ""
 }
 
 func ParseText(reader io.ReaderAt, offset int64, len int64, flags uint32) string {

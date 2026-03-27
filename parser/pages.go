@@ -126,18 +126,7 @@ func GetPageValues(ctx *ESEContext, header *PageHeader, id int64) []*Value {
 		offset -= 4
 	}
 
-	if DebugWalk {
-		fmt.Printf("Got %v values for page %v\n", len(result), id)
-	}
 	return result
-}
-
-func GetRoot(ctx *ESEContext, value *Value) *ESENT_ROOT_HEADER {
-	return ctx.Profile.ESENT_ROOT_HEADER(value.Reader(), 0)
-}
-
-func GetBranch(ctx *ESEContext, value *Value) *ESENT_BRANCH_HEADER {
-	return ctx.Profile.ESENT_BRANCH_HEADER(value.Reader(), 0)
 }
 
 type PageHeader struct {
@@ -185,63 +174,6 @@ func (self *PageHeader) EndOffset(ctx *ESEContext) int64 {
 		size = 80
 	}
 	return self.Offset + size
-}
-
-func DumpPage(ctx *ESEContext, id int64) {
-	header, err := ctx.GetPage(id)
-	if err != nil {
-		fmt.Printf("Page %v: %v\n", id, err)
-		return
-	}
-	fmt.Printf("Page %v: %v\n", id, header.DebugString())
-
-	// Show the tags
-	values := GetPageValues(ctx, header, id)
-	if len(values) == 0 {
-		return
-	}
-
-	for i, value := range values {
-		fmt.Printf("Tag %v @ %#x offset %#x length %#x\n",
-			i, value.Tag.Offset,
-			value.Tag.ValueOffsetInPage(ctx, header),
-			value.Tag.ValueSize(ctx))
-	}
-
-	flags := header.Flags()
-
-	if flags.IsSet("Root") {
-		GetRoot(ctx, values[0]).Dump()
-
-		// Branch header
-	} else if header.IsBranch() {
-		GetBranch(ctx, values[0]).Dump()
-
-		// SpaceTree header
-	} else if flags.IsSet("SpaceTree") {
-		ctx.Profile.ESENT_SPACE_TREE_HEADER(
-			ctx.Reader, values[0].BufferOffset).Dump()
-
-		// Leaf header
-	} else if header.IsLeaf() {
-		NewESENT_LEAF_ENTRY(ctx, values[0]).Dump()
-	}
-
-	for _, value := range values[1:] {
-		if header.IsBranch() {
-			NewESENT_BRANCH_ENTRY(ctx, value).Dump()
-		} else if header.IsLeaf() {
-			if flags.IsSet("SpaceTree") {
-				ctx.Profile.ESENT_SPACE_TREE_ENTRY(value.Reader(), 0).Dump()
-			} else if flags.IsSet("Index") {
-				ctx.Profile.ESENT_INDEX_ENTRY(value.Reader(), 0).Dump()
-			} else if flags.IsSet("Long") {
-				// TODO
-			} else {
-				NewESENT_LEAF_ENTRY(ctx, value).Dump()
-			}
-		}
-	}
 }
 
 func (self *ESENT_ROOT_HEADER) Dump() {
@@ -337,10 +269,6 @@ func _walkPages(ctx *ESEContext,
 		return err
 	}
 	values := GetPageValues(ctx, header, id)
-	if DebugWalk {
-		fmt.Printf("Walking page %v %v\n", id, header.DebugString())
-	}
-
 	// No more records.
 	if len(values) == 0 {
 		return nil
