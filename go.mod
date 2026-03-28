@@ -1,4 +1,4 @@
-module github.com/f0x4n6/go-ese
+module go.foxforensics.dev/go-ese
 
 go 1.26.0
 
